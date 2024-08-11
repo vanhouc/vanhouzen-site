@@ -12,6 +12,7 @@ dotenvy = "0.15.7"
 rinja = "0.3.0"
 rinja_axum = "0.3.0"
 tokio = { version = "1.39.2", features = ["full"] }
+tower-http = { version = "0.5.2", features = ["fs", "tracing"] }
 tower-livereload = "0.9.3"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"

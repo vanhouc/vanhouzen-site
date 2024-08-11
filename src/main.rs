@@ -1,6 +1,7 @@
 use axum::{response::IntoResponse, routing::get};
 use dotenvy::dotenv;
 use rinja::Template;
+use tower_http::services::ServeDir;
 use tower_livereload::LiveReloadLayer;
 
 // Entrypoint for axum application
@@ -11,7 +12,8 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let app = axum::Router::new()
-        .route("/", get(index))
+        .nest_service("/assets", ServeDir::new("assets"))
+        .fallback(get(index))
         .layer(LiveReloadLayer::new());
 
     // run our app with hyper, listening globally on port 3000
