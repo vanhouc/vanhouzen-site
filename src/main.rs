@@ -21,11 +21,9 @@ async fn main() {
 
 #[tracing::instrument]
 async fn index() -> impl IntoResponse {
-    IndexTemplate { name: "Cameron" }
+    IndexTemplate {}
 }
 
 #[derive(Template)]
 #[template(path = "index.html")]
-struct IndexTemplate<'a> {
-    name: &'a str,
-}
+struct IndexTemplate {}
