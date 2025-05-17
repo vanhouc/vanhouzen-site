@@ -12,6 +12,7 @@ dotenvy = "0.15"
 fastrace = { version = "0.7", features = ["enable"] }
 fastrace-axum = "0.1"
 log = "0.4"
+logforth = "0.24.0"
 maud = { version = "0.27", features = ["axum"] }
 tokio = { version = "1.44", features = ["rt-multi-thread", "macros"] }
 tower-http = { version = "0.6", features = ["fs", "tracing"] }

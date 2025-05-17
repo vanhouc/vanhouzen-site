@@ -5,21 +5,30 @@ use axum::{
 use dotenvy::dotenv;
 use fastrace::collector::{Config, ConsoleReporter};
 use fastrace_axum::FastraceLayer;
+use log::error;
 use maud::{DOCTYPE, Markup, html};
 use tower_http::services::ServeDir;
 use tower_livereload::LiveReloadLayer;
 
+mod cameron;
+
 // Entrypoint for axum application
 #[tokio::main]
 async fn main() {
-    dotenv().expect(".env file not found");
+    if let Err(error) = dotenv() {
+        error!("failed to load env file, error: {error}")
+    }
+
+    // Setup logging out to the console
+    logforth::stdout().apply();
 
     fastrace::set_reporter(ConsoleReporter, Config::default());
 
     let app = axum::Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
+        .nest("/cameron", cameron::router())
         .route("/", get(index))
-        .fallback(async || Redirect::temporary("/"))
+        .fallback(async || Redirect::to("/"))
         .layer(FastraceLayer);
 
     #[cfg(debug_assertions)]
@@ -32,6 +41,7 @@ async fn main() {
     fastrace::flush();
 }
 
+#[fastrace::trace]
 fn layout(title: &str, content: Markup) -> Markup {
     html! {
         (DOCTYPE)
