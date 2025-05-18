@@ -34,8 +34,12 @@ async fn main() {
     #[cfg(debug_assertions)]
     let app = app.layer(LiveReloadLayer::new());
 
-    // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let port = std::env::var("PORT").expect("PORT environment variable must be set");
+
+    // run our app with hyper, listening globally on port 8080
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
+        .await
+        .unwrap();
     axum::serve(listener, app).await.unwrap();
 
     fastrace::flush();
