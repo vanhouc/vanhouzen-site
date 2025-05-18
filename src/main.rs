@@ -1,3 +1,5 @@
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
 use axum::{
     response::{IntoResponse, Redirect},
     routing::get,
@@ -34,12 +36,15 @@ async fn main() {
     #[cfg(debug_assertions)]
     let app = app.layer(LiveReloadLayer::new());
 
-    let port = std::env::var("PORT").expect("PORT environment variable must be set");
+    let port: u16 = std::env::var("PORT")
+        .expect("PORT environment variable must be set")
+        .parse()
+        .expect("port must be a valid u16");
+
+    let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
 
     // run our app with hyper, listening globally on port 8080
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     fastrace::flush();
