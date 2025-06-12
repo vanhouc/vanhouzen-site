@@ -1,12 +1,21 @@
+use std::{
+    borrow::Cow,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
+
 use axum::{
     response::{IntoResponse, Redirect},
     routing::get,
 };
 use dotenvy::dotenv;
-use fastrace::collector::{Config, ConsoleReporter};
+use fastrace::collector::Config;
 use fastrace_axum::FastraceLayer;
+use fastrace_opentelemetry::OpenTelemetryReporter;
 use log::error;
 use maud::{DOCTYPE, Markup, html};
+use opentelemetry::{InstrumentationScope, KeyValue, trace::SpanKind};
+use opentelemetry_otlp::{SpanExporter, WithExportConfig};
+use opentelemetry_sdk::Resource;
 use tower_http::services::ServeDir;
 use tower_livereload::LiveReloadLayer;
 
@@ -22,7 +31,29 @@ async fn main() {
     // Setup logging out to the console
     logforth::stdout().apply();
 
-    fastrace::set_reporter(ConsoleReporter, Config::default());
+    let otlp_exporter_endpoint =
+        std::env::var("OTLP_EXPORTER_ENDPOINT").expect("OTLP_EXPORTER_ENDPOINT must be defined");
+
+    // Initialize reporter
+    let reporter = OpenTelemetryReporter::new(
+        SpanExporter::builder()
+            .with_tonic()
+            .with_endpoint(otlp_exporter_endpoint)
+            .with_protocol(opentelemetry_otlp::Protocol::Grpc)
+            .with_timeout(opentelemetry_otlp::OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT)
+            .build()
+            .expect("initialize oltp exporter"),
+        SpanKind::Server,
+        Cow::Owned(
+            Resource::builder()
+                .with_attributes([KeyValue::new("service.name", "vanhouzen-site")])
+                .build(),
+        ),
+        InstrumentationScope::builder("vanhouzen-site")
+            .with_version(env!("CARGO_PKG_VERSION"))
+            .build(),
+    );
+    fastrace::set_reporter(reporter, Config::default());
 
     let app = axum::Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
@@ -34,12 +65,15 @@ async fn main() {
     #[cfg(debug_assertions)]
     let app = app.layer(LiveReloadLayer::new());
 
-    let port = std::env::var("PORT").expect("PORT environment variable must be set");
+    let port: u16 = std::env::var("PORT")
+        .expect("PORT environment variable must be set")
+        .parse()
+        .expect("port must be a valid u16");
+
+    let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
 
     // run our app with hyper, listening globally on port 8080
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     fastrace::flush();

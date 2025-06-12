@@ -11,9 +11,20 @@ axum-htmx = "0.7"
 dotenvy = "0.15"
 fastrace = { version = "0.7", features = ["enable"] }
 fastrace-axum = "0.1"
+fastrace-opentelemetry = "0.10.0"
 log = "0.4"
 logforth = "0.24.0"
 maud = { version = "0.27", features = ["axum"] }
+opentelemetry = { version = "0.29.0", default-features = false, features = [
+    "trace",
+] }
+opentelemetry-otlp = { version = "0.29.0", default-features = false, features = [
+    "trace",
+    "grpc-tonic",
+] }
+opentelemetry_sdk = { version = "0.29.0", default-features = false, features = [
+    "trace",
+] }
 tokio = { version = "1.44", features = ["rt-multi-thread", "macros"] }
 tower-http = { version = "0.6", features = ["fs", "tracing"] }
 tower-livereload = "0.9"
