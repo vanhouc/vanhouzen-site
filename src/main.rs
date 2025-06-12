@@ -31,14 +31,14 @@ async fn main() {
     // Setup logging out to the console
     logforth::stdout().apply();
 
-    let oltp_exporter_endpoint =
-        std::env::var("OLTP_EXPORTER_ENDPOINT").expect("OLTP_EXPORTER_ENDPOINT must be defined");
+    let otlp_exporter_endpoint =
+        std::env::var("OTLP_EXPORTER_ENDPOINT").expect("OTLP_EXPORTER_ENDPOINT must be defined");
 
     // Initialize reporter
     let reporter = OpenTelemetryReporter::new(
         SpanExporter::builder()
             .with_tonic()
-            .with_endpoint(oltp_exporter_endpoint)
+            .with_endpoint(otlp_exporter_endpoint)
             .with_protocol(opentelemetry_otlp::Protocol::Grpc)
             .with_timeout(opentelemetry_otlp::OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT)
             .build()
