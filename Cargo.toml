@@ -6,6 +6,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.98"
 axum = "0.8"
 axum-htmx = "0.7"
 dotenvy = "0.15"
