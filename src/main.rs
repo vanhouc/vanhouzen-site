@@ -31,29 +31,10 @@ async fn main() {
     // Setup logging out to the console
     logforth::stdout().apply();
 
-    let otlp_exporter_endpoint =
-        std::env::var("OTLP_EXPORTER_ENDPOINT").expect("OTLP_EXPORTER_ENDPOINT must be defined");
-
-    // Initialize reporter
-    let reporter = OpenTelemetryReporter::new(
-        SpanExporter::builder()
-            .with_tonic()
-            .with_endpoint(otlp_exporter_endpoint)
-            .with_protocol(opentelemetry_otlp::Protocol::Grpc)
-            .with_timeout(opentelemetry_otlp::OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT)
-            .build()
-            .expect("initialize oltp exporter"),
-        SpanKind::Server,
-        Cow::Owned(
-            Resource::builder()
-                .with_attributes([KeyValue::new("service.name", "vanhouzen-site")])
-                .build(),
-        ),
-        InstrumentationScope::builder("vanhouzen-site")
-            .with_version(env!("CARGO_PKG_VERSION"))
-            .build(),
-    );
-    fastrace::set_reporter(reporter, Config::default());
+    // Initialize OTLP reporter
+    if let Ok(reporter) = initialize_otlp_reporter() {
+        fastrace::set_reporter(reporter, Config::default());
+    }
 
     let app = axum::Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
@@ -77,6 +58,28 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 
     fastrace::flush();
+}
+
+fn initialize_otlp_reporter() -> Result<OpenTelemetryReporter, anyhow::Error> {
+    let otlp_exporter_endpoint = std::env::var("OTLP_EXPORTER_ENDPOINT")?;
+    let reporter = OpenTelemetryReporter::new(
+        SpanExporter::builder()
+            .with_tonic()
+            .with_endpoint(otlp_exporter_endpoint)
+            .with_protocol(opentelemetry_otlp::Protocol::Grpc)
+            .with_timeout(opentelemetry_otlp::OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT)
+            .build()?,
+        SpanKind::Server,
+        Cow::Owned(
+            Resource::builder()
+                .with_attributes([KeyValue::new("service.name", "vanhouzen-site")])
+                .build(),
+        ),
+        InstrumentationScope::builder("vanhouzen-site")
+            .with_version(env!("CARGO_PKG_VERSION"))
+            .build(),
+    );
+    Ok(reporter)
 }
 
 #[fastrace::trace]
