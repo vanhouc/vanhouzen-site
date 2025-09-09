@@ -3,29 +3,21 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
-use axum::{
-    response::{IntoResponse, Redirect},
-    routing::get,
-};
-use dotenvy::dotenv;
+use axum::routing::get;
 use fastrace::collector::Config;
-use fastrace_axum::FastraceLayer;
 use fastrace_opentelemetry::OpenTelemetryReporter;
-use log::error;
-use maud::{DOCTYPE, Markup, html};
+use hypertext::prelude::*;
 use opentelemetry::{InstrumentationScope, KeyValue, trace::SpanKind};
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::Resource;
-use tower_http::services::ServeDir;
-use tower_livereload::LiveReloadLayer;
 
 mod cameron;
 
 // Entrypoint for axum application
 #[tokio::main]
 async fn main() {
-    if let Err(error) = dotenv() {
-        error!("failed to load env file, error: {error}")
+    if let Err(error) = dotenvy::dotenv() {
+        log::error!("failed to load env file, error: {error}")
     }
 
     // Setup logging out to the console
@@ -37,14 +29,14 @@ async fn main() {
     }
 
     let app = axum::Router::new()
-        .nest_service("/assets", ServeDir::new("assets"))
+        .nest_service("/assets", tower_http::services::ServeDir::new("assets"))
         .nest("/cameron", cameron::router())
         .route("/", get(index))
-        .fallback(async || Redirect::to("/"))
-        .layer(FastraceLayer);
+        .fallback(async || axum::response::Redirect::to("/"))
+        .layer(fastrace_axum::FastraceLayer);
 
     #[cfg(debug_assertions)]
-    let app = app.layer(LiveReloadLayer::new());
+    let app = app.layer(tower_livereload::LiveReloadLayer::new());
 
     let port: u16 = std::env::var("PORT")
         .expect("PORT environment variable must be set")
@@ -62,7 +54,7 @@ async fn main() {
 
 fn initialize_otlp_reporter() -> Result<OpenTelemetryReporter, anyhow::Error> {
     let otlp_exporter_endpoint = std::env::var("OTLP_EXPORTER_ENDPOINT")?;
-    let reporter = OpenTelemetryReporter::new(
+    let reporter = fastrace_opentelemetry::OpenTelemetryReporter::new(
         SpanExporter::builder()
             .with_tonic()
             .with_endpoint(otlp_exporter_endpoint)
@@ -83,9 +75,9 @@ fn initialize_otlp_reporter() -> Result<OpenTelemetryReporter, anyhow::Error> {
 }
 
 #[fastrace::trace]
-fn layout(title: &str, content: Markup) -> Markup {
-    html! {
-        (DOCTYPE)
+fn layout(title: &str, content: impl hypertext::Renderable) -> impl axum::response::IntoResponse {
+    hypertext::maud! {
+        !DOCTYPE
         html {
             head {
                 title { (title) }
@@ -100,8 +92,8 @@ fn layout(title: &str, content: Markup) -> Markup {
 }
 
 #[fastrace::trace]
-async fn index() -> impl IntoResponse {
-    let content = html! {
+async fn index() -> impl axum::response::IntoResponse {
+    let content = hypertext::maud! {
         main {
             h1 { "Welcome to the VanHouzen Family!" }
             p { "This site houses the personal pages for the VanHouzen family and friends" }
