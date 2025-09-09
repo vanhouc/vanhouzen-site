@@ -1,5 +1,5 @@
 use axum::{response::IntoResponse, routing::get};
-use maud::{DOCTYPE, Markup, html};
+use hypertext::prelude::*;
 
 pub fn router() -> axum::Router {
     axum::Router::new().route("/", get(cameron))
@@ -7,10 +7,10 @@ pub fn router() -> axum::Router {
 
 #[fastrace::trace]
 async fn cameron() -> impl IntoResponse {
-    let content = html!(
+    let content = hypertext::maud!(
         main {
             h1 { "Cameron VanHouzen" }
-            img id="profile" src="/assets/images/party_cam.jpeg" alt="Cameron VanHouzen" {}
+            img id="profile" src="/assets/images/party_cam.jpeg" alt="Cameron VanHouzen";
             p { "Ayy yo its me Cameron, I do computer stuff like this website." }
         }
     );
@@ -18,9 +18,9 @@ async fn cameron() -> impl IntoResponse {
 }
 
 #[fastrace::trace]
-fn layout(title: &str, content: maud::Markup) -> Markup {
-    html!(
-        (DOCTYPE)
+fn layout(title: &str, content: impl hypertext::Renderable) -> impl axum::response::IntoResponse {
+    hypertext::maud!(
+        !DOCTYPE
         html {
             head {
                 title { (title) }
