@@ -5,7 +5,6 @@ pub fn router() -> axum::Router {
     axum::Router::new().route("/", get(cameron))
 }
 
-#[fastrace::trace]
 async fn cameron() -> impl IntoResponse {
     let content = hypertext::maud!(
         main {
@@ -17,7 +16,6 @@ async fn cameron() -> impl IntoResponse {
     layout("Cameron", content)
 }
 
-#[fastrace::trace]
 fn layout(title: &str, content: impl hypertext::Renderable) -> impl axum::response::IntoResponse {
     hypertext::maud!(
         !DOCTYPE
