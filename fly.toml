@@ -21,4 +21,6 @@ min_machines_running = 0
 processes = ['app']
 
 [[vm]]
-size = 'shared-cpu-1x'
+memory = '256mb'
+cpu_kind = 'shared'
+cpus = 1
