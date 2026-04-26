@@ -1,15 +1,7 @@
-use std::{
-    borrow::Cow,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use axum::routing::get;
-use fastrace::collector::Config;
-use fastrace_opentelemetry::OpenTelemetryReporter;
 use hypertext::prelude::*;
-use opentelemetry::{InstrumentationScope, KeyValue, trace::SpanKind};
-use opentelemetry_otlp::{SpanExporter, WithExportConfig};
-use opentelemetry_sdk::Resource;
 
 mod cameron;
 
@@ -23,17 +15,11 @@ async fn main() {
     // Setup logging out to the console
     logforth::stdout().apply();
 
-    // Initialize OTLP reporter
-    if let Ok(reporter) = initialize_otlp_reporter() {
-        fastrace::set_reporter(reporter, Config::default());
-    }
-
     let app = axum::Router::new()
         .nest_service("/assets", tower_http::services::ServeDir::new("assets"))
         .nest("/cameron", cameron::router())
         .route("/", get(index))
-        .fallback(async || axum::response::Redirect::to("/"))
-        .layer(fastrace_axum::FastraceLayer);
+        .fallback(async || axum::response::Redirect::to("/"));
 
     #[cfg(debug_assertions)]
     let app = app.layer(tower_livereload::LiveReloadLayer::new());
@@ -48,33 +34,8 @@ async fn main() {
     // run our app with hyper, listening globally on port 8080
     let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     axum::serve(listener, app).await.unwrap();
-
-    fastrace::flush();
 }
 
-fn initialize_otlp_reporter() -> Result<OpenTelemetryReporter, anyhow::Error> {
-    let otlp_exporter_endpoint = std::env::var("OTLP_EXPORTER_ENDPOINT")?;
-    let reporter = fastrace_opentelemetry::OpenTelemetryReporter::new(
-        SpanExporter::builder()
-            .with_tonic()
-            .with_endpoint(otlp_exporter_endpoint)
-            .with_protocol(opentelemetry_otlp::Protocol::Grpc)
-            .with_timeout(opentelemetry_otlp::OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT)
-            .build()?,
-        SpanKind::Server,
-        Cow::Owned(
-            Resource::builder()
-                .with_attributes([KeyValue::new("service.name", "vanhouzen-site")])
-                .build(),
-        ),
-        InstrumentationScope::builder("vanhouzen-site")
-            .with_version(env!("CARGO_PKG_VERSION"))
-            .build(),
-    );
-    Ok(reporter)
-}
-
-#[fastrace::trace]
 fn layout(title: &str, content: impl hypertext::Renderable) -> impl axum::response::IntoResponse {
     hypertext::maud! {
         !DOCTYPE
@@ -91,7 +52,6 @@ fn layout(title: &str, content: impl hypertext::Renderable) -> impl axum::respon
     }
 }
 
-#[fastrace::trace]
 async fn index() -> impl axum::response::IntoResponse {
     let content = hypertext::maud! {
         main {
